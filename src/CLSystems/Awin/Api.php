@@ -2,13 +2,6 @@
 
 namespace CLSystems\Awin;
 
-use CLSystems\Awin\Http\Response;
-use CLSystems\Awin\Request\GetAccountDefinition;
-use CLSystems\Awin\Request\GetCommissionGroupsDefinition;
-use CLSystems\Awin\Request\GetProgrammeDetailDefinition;
-use CLSystems\Awin\Request\GetProgrammesDefinition;
-use CLSystems\Awin\Request\GetTransactionsDefinition;
-use CLSystems\Awin\Request\RequestDefinitionInterface;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 
@@ -45,104 +38,79 @@ class Api
 	}
 
 	/**
-	 * @return Client
+	 * @return Api
 	 */
-	public function getClient() : Client
+	public function getClient() : Api
 	{
-		if (empty($this->httpClient))
+		if (true === empty($this->httpClient))
 		{
 			$this->httpClient = new Client([
 				'base_uri' => self::AWIN_API_ENDPOINT,
-				'headers'  => ['Authorization' => sprintf('Bearer %s', $this->apiToken)],
+				'headers'  => [
+					'Authorization' => sprintf('Bearer %s', $this->apiToken),
+					'Accept'        => 'application/json',
+				],
 			]);
 		}
 
-		return $this->httpClient;
+		return $this;
 	}
 
 	/**
-	 * @param RequestDefinitionInterface $definition
-	 * @return Response
-	 * @throws GuzzleException
-	 */
-	private function send(RequestDefinitionInterface $definition) : Response
-	{
-		$response = $this->getClient()->request(
-			$definition->getMethod(),
-			$definition->getUrl(),
-			[
-				'body' => json_encode($definition->getBody()),
-			]
-		);
-
-		return new Response($response->getStatusCode(), $response->getBody()->getContents());
-	}
-
-	/**
-	 * @doc http://wiki.awin.com/index.php/API_get_accounts
-	 * @param array $options
-	 * @return Response
-	 * @throws GuzzleException
-	 */
-	public function getAccounts(array $options = []) : Response
-	{
-		return $this->send(new GetAccountDefinition($options));
-	}
-
-	/**
-	 * @doc http://wiki.awin.com/index.php/API_get_programmes
+	 * Get programs from Awin API
+	 * @see https://wiki.awin.com/index.php/API_get_programmes
+	 *
 	 * @param int $publisherId
-	 * @param array $options
-	 * @return Response
-	 * @throws GuzzleException
+	 * @param array $params
+	 * @return array
 	 */
-	public function getProgrammes(int $publisherId, array $options = []) : Response
+	public function getPrograms(int $publisherId, array $params = []) : array
 	{
-		$options['publisherId'] = $publisherId;
+		$httpquery = http_build_query(array_merge([
+//				'api_key'      => $this->apiKey,
+//				'affiliate_id' => $this->affiliateId
+			] + $params));
 
-		return $this->send(new GetProgrammesDefinition($options));
+		$url = self::AWIN_API_ENDPOINT . '/publishers/' . $publisherId . '/programmes?' . $httpquery;
+		var_dump($url);
+		$response = $this->httpClient->get($url)->getBody()->getContents();
+		$result = json_decode($response, true);
+
+		if (false === $result)
+		{
+			echo 'Error in response: ' . var_export($response, true);
+			return [];
+		}
+		return $result;
 	}
 
-	/**
-	 * @doc http://wiki.awin.com/index.php/API_get_programmedetails
-	 * @param int $publisherId
-	 * @param array $options
-	 * @return Response
-	 * @throws GuzzleException
-	 */
-	public function getProgrammeDetail(int $publisherId, array $options = []) : Response
-	{
-		$options['publisherId'] = $publisherId;
-
-		return $this->send(new GetProgrammeDetailDefinition($options));
-	}
 
 	/**
-	 * @doc http://wiki.awin.com/index.php/API_get_commissiongroups
-	 * @param int $publisherId
-	 * @param array $options
-	 * @return Response
-	 * @throws GuzzleException
+	 * Get program detailss from Awin API
+	 * @see https://wiki.awin.com/index.php/API_get_programmedetails
+	 *
+	 * @param int $programId
+	 * @param array $params
+	 * @return array
 	 */
-	public function getCommissionGroups(int $publisherId, array $options = []) : Response
+	public function getProgramDetails(int $publisherId, int $programId, array $params = []) : array
 	{
-		$options['publisherId'] = $publisherId;
+		$httpquery = http_build_query(array_merge([
+				'advertiserId' => $programId,
+				//				'affiliate_id' => $this->affiliateId
+			] + $params));
 
-		return $this->send(new GetCommissionGroupsDefinition($options));
-	}
+		$url = self::AWIN_API_ENDPOINT . '/publishers/' . $publisherId . '/programmedetails?' . $httpquery;
+		var_dump($url);
+		$response = $this->httpClient->get($url)->getBody()->getContents();
+		$result = json_decode($response, true);
 
-	/**
-	 * @doc http://wiki.awin.com/index.php/API_get_transactions_list
-	 * @param int $publisherId
-	 * @param array $options
-	 * @return Http\Response
-	 * @throws GuzzleException
-	 */
-	public function getTransactions(int $publisherId, array $options = []) : Response
-	{
-		$options['publisherId'] = $publisherId;
-
-		return $this->send(new GetTransactionsDefinition($options));
+		if (false === $result)
+		{
+			echo 'Error in response: ' . var_export($response, true);
+			return [];
+		}
+		return $result;
 	}
 
 }
